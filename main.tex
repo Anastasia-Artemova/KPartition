@@ -1,0 +1,474 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=30mm]{geometry}
+\usepackage{float}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,amsmath,amssymb,booktabs,array,enumitem,algorithm,algpseudocode,hyperref}
+\usepackage{microtype}
+\hypersetup{hidelinks}
+\newcommand{\bigO}{\mathcal O}
+\algrenewcommand\algorithmicrequire{\textbf{Require:}}
+\algrenewcommand\algorithmicensure{\textbf{Ensure:}}
+\title{The k-Partition Problem}
+\author{Anastasiia Artemova \and Maksym Suprun \and Pramika Singh Jha \and Dmitry Hais}
+\date{October 2026}
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+\section{Problem Statement}
+Given a collection of $n$ positive integers $A=(a_1,\ldots,a_n)$ and an integer $1\le k\le n$, partition the elements into $k$ nonempty, pairwise disjoint groups $G_1,\ldots,G_k$. Every input occurrence must belong to exactly one group. If $S_i=\sum_{x\in G_i}x$, the objective is
+\begin{equation}\label{eq:objective}
+D(G_1,\ldots,G_k)=\max_{1\le i\le k}S_i-\min_{1\le i\le k}S_i.
+\end{equation}
+The objective is to minimize $D$ over all valid partitions. The ideal value is $D=0$, although an equal-sum partition need not exist.
+
+\paragraph{Input size and computational model.}
+For the complexity analysis, the integers are represented in binary. Let $\ell(x)=\lfloor\log_2 x\rfloor+1$ denote the bit length of a positive integer $x$, and define the input size
+\begin{equation}\label{eq:inputsize}
+L=\sum_{j=1}^{n}\ell(a_j)+\ell(n)+\ell(k).
+\end{equation}
+Let $T=\sum_{j=1}^{n}a_j$ and $b=\lceil\log_2(T+1)\rceil$. All input values, group sums, and differences of group sums have at most $O(b)$ bits, with $b=O(L)$. We use the logarithmic-cost (bit-complexity) criterion: adding, subtracting, or comparing $b$-bit integers costs $O(b)$ bit operations, while multiplying two $O(b)$-bit integers costs $O(b^2)$.
+
+\section{Proposed Solutions}
+For the given problem we designed 2 solutions:
+\begin{itemize}
+\item Energy-Based Subset-Exchange Local Search
+\item Polynomial-Time Single-Element Swap Local Search
+\end{itemize}
+\subsection{Common Greedy Initialization}
+Both proposed methods begin with the same greedy construction. Create $k$ empty groups with zero sums, sort the input in non-increasing order, and assign each element to a group with the currently smallest sum (ties may be broken by group index).
+
+Sorting costs $O(n\log n)$ comparisons. With a linear scan over the $k$ group sums for each of the $n$ elements, assignment costs $O(nk)$. Under the logarithmic-cost criterion, each comparison or addition costs $O(b)$ bit operations. Hence the greedy initialization costs
+\begin{equation}\label{eq:greedy}
+T_{\mathrm{greedy}}(n,k,b)=O\bigl((n\log n+nk)b\bigr).
+\end{equation}
+
+\begin{algorithm}[ht]
+\caption{Greedy initialization}
+\begin{algorithmic}[1]
+\Require Positive integers $A$, number of groups $k$
+\Ensure Groups $G_1,\ldots,G_k$ and their sums $S_1,\ldots,S_k$
+\State Initialize all $G_i\gets\emptyset$ and $S_i\gets0$
+\State Sort $A$ in non-increasing order
+\For{each $x\in A$}
+\State $i\gets\arg\min_{1\le j\le k}S_j$
+\State Insert $x$ into $G_i$; $S_i\gets S_i+x$
+\EndFor
+\State \Return $(G,S)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Solution 1: Energy-Based Subset-Exchange Local Search}
+\subsubsection{Energy Function}
+Let $T=\sum_{j=1}^{n}a_j$ and $\mu=T/k$. The equal-sum target is $S_i=\mu$ for every $i$. There are some cases when an equal-sum integer partition is impossible. For example, with $A=(1,2,5)$ and $k=3$, $\mu=8/3$. Even when $\mu$ is an integer, indivisible input elements can prevent equality.
+
+We introduce the squared-deviation measure
+\begin{equation}V=\sum_{i=1}^{k}(S_i-\mu)^2.\end{equation}
+Expanding and using $\sum_iS_i=T=k\mu$ yields
+\begin{align}
+V&=\sum_{i=1}^{k}S_i^2-2\mu T+k\mu^2\\
+ &=\sum_{i=1}^{k}S_i^2-\frac{T^2}{k}.
+\end{align}
+Since $T$ and $k$ are fixed, minimizing $V$ is equivalent to minimizing the simpler energy
+\begin{equation}E=\sum_{i=1}^{k}S_i^2.\end{equation}
+Energy measures overall imbalance but is not identical to the objective $D$ in Equation~\eqref{eq:objective}.
+
+\subsubsection{Candidate Exchanges for Energy Change}
+For each unordered pair of groups $(G_a,G_b)$, enumerate a subset $A'\subseteq G_a$ and a subset $B'\subseteq G_b$. Empty selections are allowed, enabling one-way transfers, but exchanges that leave either resulting group empty are excluded.
+
+Define the signed net transfer
+\begin{equation}d=\sum_{x\in A'}x-\sum_{y\in B'}y.\end{equation}
+The new group sums are $S_a'=S_a-d$ and $S_b'=S_b+d$. Since other group sums do not change,
+\begin{align}
+\Delta E&=(S_a-d)^2+(S_b+d)^2-S_a^2-S_b^2\\
+&=-2S_ad+2S_bd+2d^2\\
+&=2d\bigl(d-(S_a-S_b)\bigr).
+\end{align}
+Once the subset sums are available, a candidate's energy change can be evaluated in an $O(b^2)$ upper bound per candidate. The algorithm chooses the candidate with the most negative $\Delta E$ over all pairs, applies it, and repeats. It stops when no candidate has $\Delta E<0$ (or when a zero-difference solution has been found).
+
+Because energy and the original objective are different, the implementation separately retains the best visited partition according to the pair $(D,E)$: lower $D$ takes priority, and lower $E$ breaks ties.
+
+\newpage
+\subsubsection{Pseudocode}
+\begin{algorithm}[ht]
+\caption{Energy-based subset-exchange search}
+\begin{algorithmic}[1]
+\State $(G,S)\gets\textsc{GreedyInitialization}(A,k)$
+\State $best\gets G$; $D_{best}\gets D(G)$; $E_{best}\gets E(G)$
+\While{$D_{best}>0$}
+\State $\delta_{best}\gets0$; $move\gets\text{none}$
+\For{each pair $1\le a<b\le k$}
+\State Enumerate subsets of $G_a$ and $G_b$, storing their sums
+\For{each pair of subsets $(A',B')$}
+\If{either resulting group would be empty}
+\State \textbf{continue}
+\EndIf
+\State $d\gets\sum A'-\sum B'$
+\State $\delta\gets2d(d-(S_a-S_b))$
+\If{$\delta<\delta_{best}$}
+\State $\delta_{best}\gets\delta$; $move\gets(a,b,A',B')$
+\EndIf
+\EndFor
+\EndFor
+\If{$move=\text{none}$}
+\State \textbf{break}
+\EndIf
+\State Apply move and update $S$
+\If{$D(G)<D_{best}$ \textbf{or} $(D(G)=D_{best}$ \textbf{and} $E(G)<E_{best})$}
+\State $best\gets G$; $D_{best}\gets D(G)$; $E_{best}\gets E(G)$
+\EndIf
+\EndWhile
+\State \Return $best$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Time Complexity}
+Let $m_i=|G_i|$, where $\sum_{i=1}^{k}m_i=n$. A group with $m_i$ elements has $2^{m_i}$ subsets. Generating and storing their index lists requires $O(m_i2^{m_i})$ index operations in the implementation under consideration; computing and storing subset sums adds $O(b)$ bit-operation cost per addition. For groups $a$ and $b$, the number of candidate exchanges is
+\begin{equation}2^{m_a}2^{m_b}=2^{m_a+m_b}.\end{equation}
+Although the energy evaluation itself uses a constant number of arithmetic operations, these cost $O(b^2)$ bit operations under the logarithmic-cost criterion. Recording a best candidate can also copy up to $m_a+m_b$ indices. Therefore, a conservative per-pair bound is
+\begin{equation}O\bigl((m_a+m_b+b^2)2^{m_a+m_b}\bigr).\end{equation}
+Across all pairs, a complete local-search pass costs at most
+\begin{equation}
+O\left(\sum_{1\le a<b\le k}(m_a+m_b+b^2)2^{m_a+m_b}\right).
+\end{equation}
+For approximately equal group cardinalities $m_i\approx n/k$, this gives the balanced-cardinality estimate
+\begin{equation}
+O\left(k^2\left(\frac nk+b^2\right)2^{2n/k}\right)
+=O\left((kn+k^2b^2)2^{2n/k}\right).
+\end{equation}
+With $I$ local-search passes, the estimated total cost, including greedy initialization, is
+\begin{equation}
+O\left((n\log n+nk)b+I(kn+k^2b^2)2^{2n/k}\right).
+\end{equation}
+This is not a worst-case polynomial bound: group cardinalities need not be balanced, and $I$ has no polynomial bound imposed by this algorithm. A conservative worst-case per-pass bound is $O((kn+k^2b^2)2^n)$.
+
+The proposed energy-based local search's practical computational cost depends strongly on the number of subsets $k$ and the distribution of elements among them. To illustrate the effect of increasing $k$, consider $n=24$ elements and $I=5$ iterations. We compare the estimated number of candidate evaluations against $2^n=16\,777\,216$. This table counts candidate evaluations only (not bit operations), and assumes approximately equal group sizes.
+\begin{table}[ht]
+\centering
+\caption{Estimated candidate evaluations for different values of $k$ ($n=24$, $I=5$).}
+\begin{tabular}{rrrr}
+\toprule
+$k$ & $Ik^2 2^{2n/k}$ & $2^n$ & Comparison\\
+\midrule
+2 & 335,544,320 & 16,777,216 & 20$\times$ worse\\
+3 & 2,949,120 & 16,777,216 & 5.7$\times$ better\\
+4 & 327,680 & 16,777,216 & 51$\times$ better\\
+6 & 46,080 & 16,777,216 & 364$\times$ better\\
+8 & 20,480 & 16,777,216 & 819$\times$ better\\
+\bottomrule
+\end{tabular}
+\end{table}
+As shown in Table~1, increasing the number of subsets significantly reduces the estimated number of candidate evaluations. This behavior results from the exponential term $2^{2n/k}$, which decreases rapidly as $k$ grows. These comparisons are illustrative candidate-count ratios, not end-to-end runtime or bit-complexity guarantees.
+
+\subsubsection{Termination and Local Optimality}
+Every accepted move has $\Delta E<0$, so the energy strictly decreases. Since there are finitely many assignments of $n$ input occurrences to $k$ groups, the search cannot continue indefinitely. It terminates after finitely many accepted moves.
+
+If the search stops because no improving exchange exists, its current search state is a local minimum of $E$ relative to valid exchanges between two groups. If it stops early because a perfect partition has been found, that partition is globally optimal for $D$. The separately retained best-by-$(D,E)$ partition need not itself be a local minimum of $E$, although it is no worse than the greedy partition with respect to $D$.
+
+\subsubsection{Limitations}
+Consider
+\begin{equation*}A=(25,20,18,15,12,10,8,7,5),\quad k=4,\quad T=120.\end{equation*}
+The ideal sum is $T/k=30$. Greedy initialization produces:
+\begin{center}\begin{tabular}{lll}\toprule Group & Elements & Sum\\\midrule $G_1$ & 25, 7 & 32\\ $G_2$ & 20, 8 & 28\\ $G_3$ & 18, 10 & 28\\ $G_4$ & 15, 12, 5 & 32\\\bottomrule\end{tabular}\end{center}
+Here $D=4$ and $E=32^2+28^2+28^2+32^2=3616$.
+
+In the first iteration, exchanging 18 from $G_3$ with $(15,5)$ from $G_4$ gives $d=18-(15+5)=-2$ and
+\begin{equation*}\Delta E=2(-2)\bigl(-2-(28-32)\bigr)=-8.\end{equation*}
+The updated partition is:
+\begin{center}\begin{tabular}{lll}\toprule Group & Elements & Sum\\\midrule $G_1$ & 25, 7 & 32\\ $G_2$ & 20, 8 & 28\\ $G_3$ & 10, 15, 5 & 30\\ $G_4$ & 12, 18 & 30\\\bottomrule\end{tabular}\end{center}
+Now $E=3608$, but $D=4$ remains unchanged. The observed implementation stops after this iteration because it finds no further strictly energy-decreasing pairwise exchange.
+
+Nevertheless, a globally optimal partition exists:
+\begin{center}\begin{tabular}{lll}\toprule Group & Elements & Sum\\\midrule $G_1$ & 25, 5 & 30\\ $G_2$ & 20, 10 & 30\\ $G_3$ & 15, 8, 7 & 30\\ $G_4$ & 18, 12 & 30\\\bottomrule\end{tabular}\end{center}
+It achieves $D=0$ and $E=4\cdot30^2=3600$. The example shows that strict pairwise energy descent can get stuck despite the existence of a better global solution. Reaching it may require coordinated moves across more than two groups or moves that are not immediately energy-decreasing.
+
+\subsection{Solution 2: Polynomial-Time Single-Element Swap Local Search}
+\subsubsection{Algorithm}
+The second approach uses the same greedy initialization, but replaces exponential subset enumeration with single-element swaps. It considers every pair of groups $(G_a,G_b)$ having unequal current sums, and tries swapping one element $x\in G_a$ with one element $y\in G_b$.
+
+The group sums after the trial swap are
+\begin{equation}S_a'=S_a-x+y,\qquad S_b'=S_b-y+x.\end{equation}
+The algorithm recomputes the global difference $D'$ across all $k$ groups. It accepts the swap immediately if $D'<D_{current}$; otherwise, it undoes the trial swap. A complete pass continues scanning candidate swaps, possibly accepting multiple improving swaps. The next pass starts only if at least one improvement was made.
+
+The local search terminates when $D=0$, no swap improves $D$ during a complete pass, or the number of passes reaches
+\begin{equation}I_{max}=n^2.\end{equation}
+The iteration cap guarantees polynomial running time. Unlike Solution 1, this method directly optimizes the original objective $D$, but its neighborhood contains only one-for-one swaps; it cannot perform one-way transfers or multi-element exchanges.
+
+\newpage
+\subsubsection{Pseudocode}
+\begin{algorithm}[ht]
+\caption{Polynomial single-element swap search}
+\begin{algorithmic}[1]
+\State $(G,S)\gets\textsc{GreedyInitialization}(A,k)$
+\State $pass\gets0$; $I_{max}\gets n^2$
+\While{$pass<I_{max}$}
+\State $D_{current}\gets\max(S)-\min(S)$
+\If{$D_{current}=0$}
+\State \textbf{break}
+\EndIf
+\State $improved\gets\text{false}$
+\For{each pair $1\le a<b\le k$}
+\If{$S_a=S_b$}
+\State \textbf{continue}
+\EndIf
+\For{each element $x\in G_a$}
+\For{each element $y\in G_b$}
+\State Tentatively swap $x$ and $y$ and update $S_a,S_b$
+\State $D'\gets\max(S)-\min(S)$
+\If{$D'<D_{current}$}
+\State $D_{current}\gets D'$; $improved\gets\text{true}$
+\Else
+\State Undo the swap and restore $S_a,S_b$
+\EndIf
+\EndFor
+\EndFor
+\EndFor
+\If{$improved=\text{false}$}
+\State \textbf{break}
+\EndIf
+\State $pass\gets pass+1$
+\EndWhile
+\State \Return $G$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Polynomial Time Complexity}
+Across all unordered pairs of groups, the number of possible element pairs is
+\begin{equation}
+\sum_{1\le a<b\le k}m_am_b=\frac12\left(n^2-\sum_{i=1}^{k}m_i^2\right)\le\frac{n^2}{2}.
+\end{equation}
+Each trial swap updates two sums in $O(b)$ bit operations and recomputes the global minimum and maximum over $k$ sums in $O(kb)$ bit operations. Thus, one complete pass costs
+\begin{equation}O(n^2kb).\end{equation}
+With at most $n^2$ passes, the total running time is
+\begin{align}
+T_{poly}(n,k,b)&=O\bigl((n\log n+nk)b+n^2\cdot n^2kb\bigr)\\
+&=O\bigl((n\log n+n^4k)b\bigr).
+\end{align}
+Because $k\le n$, this is bounded by $O(n^5b)$. Since $n\le L$ and $b=O(L)$, the bound is also $O(L^6)$, proving polynomial running time in the binary input size under the logarithmic-cost criterion.
+
+\subsubsection{Termination and Limitations}
+Every accepted swap strictly reduces the integer-valued objective $D$, so accepted swaps cannot cycle. The explicit $n^2$ pass limit also guarantees termination even without relying on the magnitude of the input values.
+
+If the algorithm stops because an entire pass contains no improving swap, it is locally optimal with respect to its tested one-for-one swaps. If it stops because the iteration limit is reached, such local optimality is not guaranteed. Neither condition guarantees a globally optimal partition.
+
+The method can miss improvements that require moving one element without a compensating exchange, swapping multiple elements, or temporarily accepting a non-improving move. Furthermore, immediate acceptance means that the final partition can depend on the order in which candidate swaps are examined.
+
+\section{Comparison of the Two Approaches}
+\begin{table}[ht]
+\centering\small
+\caption{Comparison of the proposed heuristics.}
+\begin{tabular}{p{0.23\linewidth}p{0.35\linewidth}p{0.34\linewidth}}
+\toprule
+Property & Energy-based subset exchanges & Polynomial single-element swaps\\
+\midrule
+Initialization & Descending greedy assignment & Descending greedy assignment\\
+Objective used for moves & Minimize $E=\sum_i S_i^2$ & Minimize $D=\max_iS_i-\min_iS_i$\\
+Candidate neighborhood & All valid subset exchanges between any two groups & One element exchanged between any two groups\\
+Acceptance & Best strictly energy-decreasing candidate per pass & Immediately accept any strictly $D$-decreasing candidate\\
+Search cost & Exponential subset enumeration & Polynomial with $n^2$-pass cap\\
+Approximate total time (bit operations) & $O((n\log n+nk)b+I(kn+k^2b^2)2^{2n/k})$ for balanced group sizes & $O((n\log n+n^4k)b)$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Implementation and Input/Output}
+Both programs are written in C++17. They accept the input file path and $k$ as command-line arguments. The input begins with the number of sets, followed by one whitespace-separated set of positive integers per line. Results are written to the \texttt{output/} directory under the name \texttt{<input\_stem>\_output.txt}.
+
+For each set, the output records the original set and its sum, the $k$ resulting groups and their sums, and the final maximum difference. The original set retains input order; elements within each output group are sorted in non-increasing order; and group lines are sorted lexicographically in non-increasing order by their element sequences.
+
+\section{Compilation and Execution}
+Both proposed algorithms are implemented in C++17 and can be compiled using a C++ compiler supporting the C++17 standard, such as GCC.
+\subsection{Compilation}
+To compile the energy-based local search implementation, execute:
+\begin{verbatim}
+g++ -std=c++17 -O2 k_partitions.cpp -o solution2
+\end{verbatim}
+To compile the polynomial-time single-element go to the directory \texttt{polynomial\_solution} and execute:
+\begin{verbatim}
+g++ -std=c++17 -O2 k_partitions.cpp -o solution1
+\end{verbatim}
+The \texttt{-std=c++17} flag enables C++17 features, including the filesystem library, while \texttt{-O2} enables compiler optimizations.
+\subsection{Execution}
+Both programs accept two command-line arguments:
+\begin{enumerate}
+\item The path to the input text file.
+\item The number of subsets $k$.
+\end{enumerate}
+For example, on Linux or macOS:
+\begin{verbatim}
+./solution1 input/AaC_example_1.txt 4
+./solution2 input/AaC_example_1.txt 4
+\end{verbatim}
+On Windows PowerShell:
+\begin{verbatim}
+.\solution1.exe input\AaC_example_1.txt 4
+.\solution2.exe input\AaC_example_1.txt 4
+\end{verbatim}
+\subsection{Input Format}
+The input file must have a \texttt{.txt} extension.
+
+The first line specifies the number of input sets. Each subsequent line contains one set of positive integers separated by spaces.
+
+For example:
+\begin{verbatim}
+2
+25 20 18 15 12 10 8 7 5
+8 7 6 5 4
+\end{verbatim}
+Each set must contain at least $k$ elements to ensure that all resulting subsets are non-empty.
+\subsection{Output Format}
+The programs automatically create an \texttt{output/} directory in the current working directory, if it does not already exist.
+
+For an input file named \texttt{AaC\_example\_1.txt}, the resulting file is saved as:
+\begin{verbatim}
+output/AaC_example_1_output.txt
+\end{verbatim}
+The output contains:
+\begin{itemize}
+\item The number of input sets and the value of $k$.
+\item The original elements and their total sum.
+\item The resulting $k$ subsets and their individual sums.
+\item The final difference between the maximum and minimum subset sums.
+\end{itemize}
+Elements within each subset are sorted in non-increasing order, and the subsets are ordered lexicographically in non-increasing order.
+
+Additionally, the programs print intermediate optimization results to the console, allowing the progression of the local-search algorithms to be observed.
+
+
+\section{Empirical Evaluation}
+
+To validate the theoretical properties and compare the practical performance of both proposed heuristics, we conducted an empirical evaluation across all 19 benchmark instances in the test suite. Furthermore, to evaluate solution quality against the true global optimum, we compared both heuristics against an exact solver implementing the Complete Karmarkar--Karp (CKK) branch-and-bound algorithm.
+
+\subsection{Evaluation Methodology and Metrics}
+
+While wall-clock runtime is commonly reported in benchmarking, on small-to-moderate problem instances ($n \le 20$) it is heavily dominated by environment-specific factors such as operating system scheduling, process creation, and file I/O overhead. Consequently, raw milliseconds do not provide a stable, machine-independent metric for comparing algorithmic efficiency.
+
+Instead, our empirical evaluation prioritizes:
+
+\begin{enumerate}[label=(\alph*)]
+    \item \textbf{Solution Quality ($D$):} The final difference $D = \max_i S_i - \min_i S_i$, quantifying how close the partition is to an equal-sum distribution.
+    \item \textbf{Descent Effort ($I$):} The number of improving iterations required before the local search reaches a local minimum.
+    \item \textbf{Optimality Gap ($D - D^*$):} The difference between the heuristic result and the exact global optimum $D^*$ computed by the CKK solver.
+    \item \textbf{Asymptotic Feasibility:} Observing the problem sizes where exact branch-and-bound becomes computationally intractable, highlighting the necessity of heuristic approaches.
+\end{enumerate}
+
+
+\subsection{Benchmark Dataset Results}
+
+We first evaluated both heuristics on all 19 benchmark instances from the lab suite. To assess their solution quality, we compared their results with the initial greedy assignment and the exact solutions obtained using the CKK solver.
+
+Table~\ref{tab:empirical_results} summarizes the results. For each instance, we report the number of subsets $k$, number of elements $n$, total sum $\sum A$, initial greedy difference $D_{\mathrm{gr}}$, the final difference and iteration count for both heuristics, the exact ground-truth difference $D^*$, and the resulting optimality gap for the energy-based local search.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Empirical evaluation across benchmark datasets comparing initial greedy assignment, Energy-Based Local Search, Polynomial Single-Swap Local Search, and the Exact CKK Solver.}
+\label{tab:empirical_results}
+\begin{tabular}{llrrrrcccc}
+\toprule
+Dataset & Set & $k$ & $n$ & $\sum A$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Poly $D$ ($I$) & Exact $D^*$ & Gap \\
+\midrule
+\texttt{AaC\_lab\_k\_2} & 1 & 2 & 5 & 30 & 4 & \textbf{0} (1) & \textbf{0} (1) & 0 & 0 \\
+                        & 2 & 2 & 5 & 104 & 96 & \textbf{96} (0) & \textbf{96} (0) & 96 & 0 \\
+\midrule
+\texttt{AaC\_lab\_k\_3} & 1 & 3 & 9 & 45 & 2 & \textbf{0} (1) & \textbf{2} (0) & 0 & 0 \\
+                        & 2 & 3 & 8 & 90 & 4 & \textbf{0} (1) & \textbf{0} (1) & 0 & 0 \\
+                        & 3 & 3 & 9 & 170 & 5 & \textbf{5} (0) & \textbf{5} (0) & 5 & 0 \\
+                        & 4 & 3 & 6 & 36 & 0 & \textbf{0} (0) & \textbf{0} (0) & 0 & 0 \\
+                        & 5 & 3 & 9 & 68 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
+\midrule
+\texttt{AaC\_lab\_k\_4} & 1 & 4 & 9 & 120 & 4 & \textbf{4} (1) & \textbf{4} (0) & 0 & +4 \\
+                        & 2 & 4 & 8 & 68 & 0 & \textbf{0} (0) & \textbf{0} (0) & 0 & 0 \\
+                        & 3 & 4 & 11 & 66 & 3 & \textbf{1} (2) & \textbf{3} (0) & 1 & 0 \\
+                        & 4 & 4 & 10 & 550 & 20 & \textbf{20} (0) & \textbf{20} (0) & 10 & +10 \\
+                        & 5 & 4 & 9 & 70 & 2 & \textbf{2} (0) & \textbf{2} (0) & 1 & +1 \\
+                        & 6 & 4 & 15 & 329 & 5 & \textbf{1} (2) & \textbf{2} (1) & --$^*$ & -- \\
+                        & 7 & 4 & 20 & 1050 & 15 & \textbf{5} (1) & \textbf{15} (0) & --$^*$ & -- \\
+\midrule
+\texttt{AaC\_lab\_k\_5} & 1 & 5 & 18 & 522 & 5 & \textbf{1} (3) & \textbf{3} (1) & --$^*$ & -- \\
+\midrule
+\texttt{AaC\_lab\_k\_4\_2} & 1 & 4 & 10 & 30 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
+                        & 2 & 4 & 10 & 30 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
+                        & 3 & 4 & 8 & 55 & 2 & \textbf{2} (0) & \textbf{2} (0) & 2 & 0 \\
+                        & 4 & 4 & 8 & 55 & 2 & \textbf{2} (0) & \textbf{2} (0) & 2 & 0 \\
+\bottomrule
+\end{tabular}
+
+\vspace{4pt}
+\parbox{0.95\linewidth}{\footnotesize $^*$The exact CKK solver timed out ($>2.0\,\text{s}$) due to combinatorial explosion in branch-and-bound partition permutations. Gap is computed as $D_{\mathrm{Energy}} - D^*$.}
+\end{table}
+
+The results show that the Energy-Based Local Search achieved the exact optimal solution on all but three instances for which the CKK solver completed successfully. The remaining gaps demonstrate that local search can terminate at a suboptimal solution even when a better global solution exists. The Energy-Based Local Search also outperformed the Polynomial Single-Swap Local Search on several instances, particularly on larger datasets.
+
+For example, on Set~7 of \texttt{AaC\_lab\_k\_4}, the Energy-Based Local Search reduced the difference from $15$ to $5$, whereas the Polynomial Single-Swap Local Search made no progress. This result illustrates the advantage of evaluating a broader neighborhood of candidate solutions.
+
+
+\subsection{Scaling with Problem Size $n$ and Group Count $k$}
+
+To investigate how the heuristics scale across different problem dimensions, we evaluated both algorithms across multiple problem sizes $n \in \{12, 20, 28, 36\}$ and group counts $k \in \{3, 4, 6\}$. This parameter grid directly tests the theoretical complexity term $O(I k^2 2^{2n/k})$ analyzed in Section~2.2.4, where the driving exponential parameter is the subset density ratio $n/k$.
+
+Table~\ref{tab:scaling_nk} summarizes the initial greedy difference $D_{\mathrm{gr}}$, the final difference $D$, and the number of improving iterations $I$ for each configuration.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Empirical scaling and solution quality across varying problem sizes $n$ and group counts $k$.}
+\label{tab:scaling_nk}
+\begin{tabular}{ccrcccc}
+\toprule
+$n$ & $k$ & $n/k$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Poly $D$ ($I$) & Outcome \\
+\midrule
+12 & 3 & 4.0 & 2  & \textbf{1} (1) & \textbf{1} (1) & Tie \\
+12 & 4 & 3.0 & 20 & \textbf{20} (2) & \textbf{20} (1) & Tie \\
+12 & 6 & 2.0 & 18 & \textbf{18} (0) & \textbf{18} (0) & Tie \\
+\midrule
+20 & 3 & 6.7 & 2  & \textbf{1} (1) & \textbf{1} (2) & Tie \\
+20 & 4 & 5.0 & 8  & \textbf{2} (2) & \textbf{5} (1) & Energy $+60\%$ better \\
+20 & 6 & 3.3 & 11 & \textbf{2} (5) & \textbf{5} (3) & Energy $+60\%$ better \\
+\midrule
+28 & 3 & 9.3 & 2  & \textbf{0} (2) & \textbf{0} (1) & Optimal ($D=0$) \\
+28 & 4 & 7.0 & 7  & \textbf{1} (2) & \textbf{4} (1) & Energy $+75\%$ better \\
+28 & 6 & 4.7 & 10 & \textbf{1} (3) & \textbf{4} (2) & Energy $+75\%$ better \\
+\midrule
+36 & 3 & 12.0 & 2 & \textbf{0} (2) & \textbf{0} (2) & Optimal ($D=0$) \\
+36 & 4 & 9.0  & 5 & \textbf{1} (1) & \textbf{1} (1) & Tie \\
+36 & 6 & 6.0  & 8 & \textbf{0} (3) & \textbf{2} (1) & Energy optimal ($D=0$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results demonstrate several key behaviors as problem size and density scale:
+\begin{enumerate}[label=(\alph*)]
+\item \textbf{Small Problem Sizes ($n = 12$):} When the number of elements per group is small ($n/k \le 4$), both heuristics frequently tie because the neighborhood of single swaps is sufficient to exhaust the limited combinatorial possibilities.
+\item \textbf{Widening Quality Gap for Moderate-to-Large $n$ ($n \ge 20$):} As $n$ increases, the combinatorial search space expands, and greedy initialization leaves larger group imbalances. The Polynomial Single-Swap search consistently gets trapped in suboptimal local minima (e.g., $D=5$ at $n=20$ and $D=4$ at $n=28$). In contrast, the Energy-Based Local Search leverages multi-element transfers to overcome these plateaus, achieving significant improvements (reducing $D$ to $1$ or $2$, representing a $60\%$--$75\%$ reduction in final difference).
+\item \textbf{Impact of the Density Ratio $n/k$:} The computational cost of the energy-based search depends on $2^{2n/k}$. For moderate density ratios ($n/k \le 7$), the search finishes almost instantaneously (under $35\,\text{ms}$). Even at $n=36, k=3$ where $n/k=12$, the algorithm executes rapidly in practice because it converges in only 2 iterations to an exact $D=0$ partition.
+\end{enumerate}
+
+
+\subsection{Key Empirical Insights}
+
+The empirical evaluation provides several important observations regarding solution quality, local minima, and computational feasibility.
+
+\begin{enumerate}
+
+    \item \textbf{Superiority of Broader Neighborhoods:}
+    
+    Across the 19 benchmark instances, the Energy-Based Local Search produced strictly better partitions than the Polynomial Single-Swap Local Search on 5 instances and tied on the remaining 14. In no instance did the single-swap method outperform the energy-based approach. The difference is especially pronounced on larger instances, such as \texttt{AaC\_lab\_k\_4} Set~7, where the Energy-Based Local Search reduced $D$ from $15$ to $5$, whereas the single-swap method made no progress.
+
+    \item \textbf{Empirical Confirmation of Local Minima (Counterexample Validation):}
+    
+    On Set~1 of \texttt{AaC\_lab\_k\_4} ($A=\{25, 20, 18, 15, 12, 10, 8, 7, 5\}$), both heuristics terminated at $D=4$. The exact CKK solver proved that a globally optimal partition with $D^*=0$ exists. This empirically validates the theoretical limitation described in Section~2.2.6: pairwise energy descent can terminate in a suboptimal local minimum when escape requires coordinated moves across three or more groups.
+
+    \item \textbf{Tractability Limit of Exact Partitioning:}
+    
+    While CKK reliably found the exact solution for $n \le 11$ within $0.02$--$1.5\,\text{s}$, it timed out on all instances with $n \ge 15$. This confirms that branch-and-bound partition merging becomes computationally expensive for larger problem sizes, underscoring the practical necessity of polynomial and heuristic approaches.
+
+\end{enumerate}
+
+
+\section{Conclusion}
+Our team developed two heuristic approaches for balancing the sums of $k$ nonempty groups. Both use the same efficient greedy initialization. The first searches a broad neighborhood of subset exchanges using a squared-energy objective and can produce improved partitions at exponential computational cost. The second restricts the neighborhood to single-element swaps, directly reduces the maximum sum difference, and uses a polynomial pass limit to guarantee polynomial runtime under the logarithmic-cost criterion when measured against the binary input size.
+
+Empirical testing across 19 benchmark instances confirmed this theoretical trade-off: the energy-based local search achieved the exact global optimum in 81.3\% (13 out of 16) of solvable instances and proved superior on complex instances, while the single-swap local search provides predictable polynomial execution guarantees at the expense of remaining trapped in suboptimal local minima.
+\end{document}
