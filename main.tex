@@ -352,7 +352,7 @@ To ensure the reproducibility of all reported figures and calculations, the benc
 \end{enumerate}
 
 \subsection{Benchmark Dataset Results}
-We first evaluated both heuristics on all 19 standard benchmark instances from the laboratory suite. Table~\ref{tab:empirical_results} summarizes the initial greedy difference $D_{\mathrm{gr}}$, the final difference $D$ and iteration count $I$ for both heuristics, the exact ground-truth difference $D^*$ computed via CKK, and the resulting optimality gap.
+We evaluated both heuristics on all 19 standard benchmark instances from the laboratory suite as well as the 6 large-magnitude integer instances (\texttt{AaC\_lab\_huge\_ints}, with $k=4$). Table~\ref{tab:empirical_results} summarizes the initial greedy difference $D_{\mathrm{gr}}$, the final difference $D$ and iteration count $I$ for both heuristics, the exact ground-truth difference $D^*$ computed via CKK, and the resulting optimality gap.
 
 \begin{table}[H]
 \centering
@@ -387,6 +387,13 @@ Dataset & Set & $k$ & $n$ & $\sum A$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Po
                         & 2 & 4 & 10 & 30 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
                         & 3 & 4 & 8 & 55 & 2 & \textbf{2} (0) & \textbf{2} (0) & 2 & 0 \\
                         & 4 & 4 & 8 & 55 & 2 & \textbf{2} (0) & \textbf{2} (0) & 2 & 0 \\
+\midrule
+\texttt{AaC\_lab\_huge\_ints} & 1 & 4 & 10 & 214745843 & 21474447 & \textbf{21474373} (4) & \textbf{21474373} (1) & 21474373 & 0 \\
+                              & 2 & 4 & 12 & 230374836 & 974836 & \textbf{974836} (0) & \textbf{974836} (0) & 974836 & 0 \\
+                              & 3 & 4 & 12 & 105584836 & 990000 & \textbf{990000} (0) & \textbf{990000} (0) & 990000 & 0 \\
+                              & 4 & 4 & 10 & 33521663 & 12615679 & \textbf{12615679} (0) & \textbf{12615679} (0) & 12615679 & 0 \\
+                              & 5 & 4 & 12 & 114000000 & 3000000 & \textbf{3000000} (0) & \textbf{3000000} (0) & 3000000 & 0 \\
+                              & 6 & 4 & 12 & 50888883 & 1075320 & \textbf{1075320} (0) & \textbf{1075320} (0) & 1075320 & 0 \\
 \bottomrule
 \end{tabular}
 
@@ -395,7 +402,7 @@ Dataset & Set & $k$ & $n$ & $\sum A$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Po
 \parbox{0.95\linewidth}{\footnotesize $^*$The exact CKK solver timed out ($>5.0\,\text{s}$) due to combinatorial explosion in branch-and-bound partition permutations. Gap is computed as $D_{\mathrm{Energy}} - D^*$.}
 \end{table}
 
-The Energy-Based Local Search found the exact global optimum on 13 of the 16 solvable instances (81.3\%) and matched or improved upon the Polynomial Single-Swap result in all 19 instances.
+Across all 25 benchmark instances (22 solvable to provable optimality by CKK), the Energy-Based Local Search found the exact global optimum on 19 of the 22 solvable instances (86.4\%) and matched or improved upon the Polynomial Single-Swap result in all 25 instances. Notably, on the large-magnitude integer test suite (\texttt{AaC\_lab\_huge\_ints}), where values reach tens of millions ($\approx 2.15 \times 10^7$) across diverse structures (near-identical clusters, geometric steps, powers of 2, arithmetic sequences, and digit permutations), both heuristics maintain numerical stability within 64-bit integer limits and find the exact globally optimal partition on all 6 sets.
 
 \subsection{Time Performance Characteristics of the Exact Algorithm}
 To evaluate the scaling behavior and operational boundaries of the exact CKK algorithm, we tested problem sizes ranging from $n=4$ up to $n=18$ across group counts $k \in \{2, 3, 4\}$. Each configuration was evaluated over $T=5$ independent randomized trials with a per-instance cutoff of $5.0\,\text{s}$. Table~\ref{tab:ckk_runtime} reports the sample mean runtime, sample standard deviation, minimum and maximum observed runtimes, and the number of timeouts.
@@ -540,5 +547,5 @@ The combination of exact benchmarking, wide-range heuristic scaling, and lab dat
 \section{Conclusion}
 Our team developed two heuristic approaches for balancing the sums of $k$ nonempty groups. Both use the same efficient greedy initialization. The first searches a broad neighborhood of subset exchanges using a squared-energy objective and can produce improved partitions at exponential computational cost. The second restricts the neighborhood to single-element swaps, directly reduces the maximum sum difference, and uses a polynomial pass limit to guarantee polynomial runtime under the logarithmic-cost criterion when measured against the binary input size.
 
-Empirical testing across 19 benchmark instances confirmed this theoretical trade-off: the energy-based local search achieved the exact global optimum in 81.3\% (13 out of 16) of solvable instances and proved superior on complex instances, while the single-swap local search provides predictable polynomial execution guarantees at the expense of remaining trapped in suboptimal local minima.
+Empirical testing across 25 benchmark instances confirmed this theoretical trade-off: the energy-based local search achieved the exact global optimum in 86.4\% (19 out of 22) of solvable instances and proved superior on complex instances, while the single-swap local search provides predictable polynomial execution guarantees at the expense of remaining trapped in suboptimal local minima.
 \end{document}
