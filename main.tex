@@ -194,7 +194,6 @@ The local search terminates when $D=0$, no swap improves $D$ during a complete p
 \begin{equation}I_{max}=n^2.\end{equation}
 The iteration cap guarantees polynomial running time. Unlike Solution 1, this method directly optimizes the original objective $D$, but its neighborhood contains only one-for-one swaps; it cannot perform one-way transfers or multi-element exchanges.
 
-\newpage
 \subsubsection{Pseudocode}
 \begin{algorithm}[ht]
 \caption{Polynomial single-element swap search}
@@ -253,6 +252,51 @@ If the algorithm stops because an entire pass contains no improving swap, it is 
 
 The method can miss improvements that require moving one element without a compensating exchange, swapping multiple elements, or temporarily accepting a non-improving move. Furthermore, immediate acceptance means that the final partition can depend on the order in which candidate swaps are examined.
 
+\subsection{Solution 3: Complete Karmarkar--Karp (CKK) Exact Algorithm}
+\subsubsection{Algorithm}
+The Complete Karmarkar--Karp (CKK) approach searches for a globally optimal partition by recursively combining partial $k$-way partitions. Initially, each input element $a_i$ is represented by a vector $(a_i,0,\ldots,0)$, with its associated element assignment. At each recursive step, the two vectors with the largest difference between their maximum and minimum entries are selected.
+
+The algorithm considers every distinct permutation of the second vector's $k$ groups and merges it componentwise with the first vector. Each merge represents a possible alignment of the two partial partitions. Equivalent results are discarded by sorting their group-sum vectors into a canonical order; the remaining candidates are explored in ascending order of their current difference. When only one partition remains, its objective value $D$ is evaluated, provided all $k$ groups are nonempty. The best complete solution is retained, and the search terminates early if $D=0$, since no smaller objective value is possible.
+\newpage
+\subsubsection{Pseudocode}
+\begin{algorithm}[ht]
+\caption{Complete Karmarkar--Karp exact search}
+\begin{algorithmic}[1]
+\State $P\gets\{(a_i,0,\ldots,0):a_i\in A\}$
+\State $D_{best}\gets\infty$; $G_{best}\gets\text{none}$
+\State \Call{Search}{$P$}
+\State \Return $(G_{best},D_{best})$
+\Procedure{Search}{$P$}
+    \If{$D_{best}=0$} \State \Return \EndIf
+    \If{$|P|=1$}
+        \If{all $k$ groups of $P_1$ are nonempty \textbf{and} $D(P_1)<D_{best}$}
+            \State $G_{best}\gets P_1$; $D_{best}\gets D(P_1)$
+        \EndIf
+        \State \Return
+    \EndIf
+    \State Select $p,q\in P$ with the largest current differences
+    \State $C\gets\emptyset$; $seen\gets\emptyset$
+    \For{each distinct permutation $\pi$ of the groups of $q$}
+        \State $r\gets p+\pi(q)$; $key\gets\Call{SortDescending}{r.\mathrm{sums}}$
+        \If{$key\notin seen$}
+            \State Add $key$ to $seen$; add $r$ to $C$
+        \EndIf
+    \EndFor
+    \For{each $r\in C$ in ascending order of $D(r)$}
+        \State \Call{Search}{$(P\setminus\{p,q\})\cup\{r\}$}
+    \EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Time Complexity}
+For each merge, at most $k!$ distinct alignments of the two partial partitions are considered. Each recursive level reduces the number of partial partitions by one, so the search has depth $n-1$. A conservative upper bound on the number of search nodes is
+\begin{equation}
+O\bigl((k!)^{n-1}\bigr).
+\end{equation}
+Including permutation generation, sorting, and copying of partial partitions, the running time is bounded by $O\bigl(\operatorname{poly}(n,k,b)(k!)^{n-1}\bigr)$ under the logarithmic-cost model. Symmetry elimination reduces the number of branches in practice, and finding $D=0$ permits early termination, but neither guarantees polynomial running time. Unlike the two local-search heuristics, exhaustive exploration of all remaining branches guarantees a globally optimal valid partition.
+
+\newpage
 \section{Comparison of the Two Approaches}
 \begin{table}[ht]
 \centering\small
