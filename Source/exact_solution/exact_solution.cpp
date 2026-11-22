@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
         solutions.push_back(solution.solve());
     }
 
-    const fs::path outputDir = "./output";
+    const fs::path outputDir = "../Examples/output/output_exact_solution";
     fs::create_directories(outputDir);
     const fs::path outputPath = outputDir / (inputPath.stem().string() + "_output.txt");
     ofstream outputFile(outputPath);

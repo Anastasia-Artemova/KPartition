@@ -267,7 +267,7 @@ int main(int argc, char* argv[]) {
         solutions.push_back(move(solution));
     }
 
-    fs::path outputDir = "./output";
+    fs::path outputDir = "../Examples/output/output_polynomial_solution";
     fs::create_directories(outputDir);
 
     fs::path outputPath = outputDir / (inputPath.stem().string() + "_output.txt");
