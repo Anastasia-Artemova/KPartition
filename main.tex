@@ -381,18 +381,18 @@ Additionally, the programs print intermediate optimization results to the consol
 
 \section{Empirical Evaluation}
 
-To validate the theoretical properties, establish precise time performance characteristics, and compare the practical performance of both heuristics against the global optimum, we conducted an extensive empirical evaluation. The exact solver implements the Complete Karmarkar--Karp (CKK) branch-and-bound algorithm, while the heuristics comprise the Energy-Based Subset Exchange and the Polynomial Single-Swap algorithms.
+To validate the theoretical properties, characterize the running time empirically, and compare the practical solution quality of both heuristics against the global optimum, we conducted the experiments described below. The exact solver implements the Complete Karmarkar--Karp (CKK) branch-and-bound algorithm, while the heuristics comprise the Energy-Based Subset Exchange and the Polynomial Single-Swap algorithms.
 
 \subsection{Experimental Setup and Replication Protocol}
-To ensure the reproducibility of all reported figures and calculations, the benchmarking environment and derivation procedures were strictly controlled as follows:
+To make the reported figures reproducible, the benchmarking environment and measurement procedure were fixed as follows:
 
 \begin{enumerate}[label=(\alph*)]
 \item \textbf{Hardware Environment:} All benchmarks were executed on an Intel(R) Core(TM) i7-7500U CPU @ 2.70\,GHz (2 physical cores, 4 logical processors, 2.90\,GHz maximum clock frequency) equipped with 16\,GB of DDR4 memory running 64-bit Windows.
-\item \textbf{Software and Compilation:} The implementation was compiled using GCC 16.2.0 (MSYS2 MinGW-w64) with the flags \texttt{-std=c++17 -O2 -static}. Compiler optimizations were uniformly applied across all solvers.
-\item \textbf{Workload Generation and Randomization:} For scaling benchmarks, inputs were generated using the standard Mersenne Twister pseudorandom generator (\texttt{std::mt19937}) initialized with a fixed deterministic seed (\texttt{42}). Numbers were drawn independently from a uniform integer distribution $a_i \sim \mathcal{U}(1, 1000)$.
-
-\item \textbf{Timing Methodology:} Pure algorithm execution time was measured using the monotonic clock \texttt{std::chrono::high\_resolution\_clock}. Timing strictly bounded the internal \texttt{solve()} execution, eliminating process creation latency, file I/O, and console printing (\texttt{std::cout}) overhead.
-\item \textbf{Replication Suite:} The complete automated benchmarking harness is provided in the repository file \texttt{benchmark\_suite.cpp}, enabling direct one-command replication of all reported runtime measurements.
+\item \textbf{Software and Compilation:} The implementation was compiled using GCC 16.2.0 (MSYS2 MinGW-w64) with the flags \texttt{-std=c++17 -O2 -static}. The same flags were applied to all solvers.
+\item \textbf{Workload Generation and Randomization:} For scaling benchmarks, inputs were generated using the Mersenne Twister pseudorandom generator (\texttt{std::mt19937}) initialized with a fixed seed (\texttt{42}), so the sequence of generated instances is deterministic and reproducible. Numbers were drawn independently from a uniform integer distribution $a_i \sim \mathcal{U}(1, 1000)$.
+\item \textbf{Timing Methodology:} Execution time was measured with \texttt{std::chrono::high\_resolution\_clock}. Only the internal \texttt{solve()} call was timed, so process creation, file I/O, and console printing (\texttt{std::cout}) are excluded. Note that in the GCC/libstdc++ implementation \texttt{high\_resolution\_clock} is an alias of \texttt{system\_clock} and is therefore not guaranteed to be monotonic; since every measured interval is short, clock adjustments are expected to be negligible, but \texttt{steady\_clock} would be the more rigorous choice.
+\item \textbf{Statistics:} Every table entry is a sample mean (with sample standard deviation, minimum and maximum) over $T=5$ trials (exact solver) or $T=10$ trials (heuristics). These are small samples, so the figures should be read as indicative of trends rather than as precise estimates; the large standard deviations in Table~\ref{tab:ckk_runtime} reflect strongly instance-dependent behavior.
+\item \textbf{Replication Suite:} The automated benchmarking harness is provided in the repository file \texttt{benchmark\_suite.cpp}, enabling one-command replication of all reported runtime measurements.
 \end{enumerate}
 
 \subsection{Benchmark Dataset Results}
@@ -422,10 +422,10 @@ Dataset & Set & $k$ & $n$ & $\sum A$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Po
                         & 3 & 4 & 11 & 66 & 3 & \textbf{1} (2) & \textbf{3} (0) & 1 & 0 \\
                         & 4 & 4 & 10 & 550 & 20 & \textbf{20} (0) & \textbf{20} (0) & 10 & +10 \\
                         & 5 & 4 & 9 & 70 & 2 & \textbf{2} (0) & \textbf{2} (0) & 1 & +1 \\
-                        & 6 & 4 & 15 & 329 & 5 & \textbf{1} (2) & \textbf{2} (1) & --$^*$ & -- \\
-                        & 7 & 4 & 20 & 1050 & 15 & \textbf{5} (1) & \textbf{15} (0) & --$^*$ & -- \\
+                        & 6 & 4 & 15 & 329 & 5 & \textbf{1} (2) & \textbf{2} (1) & n/a$^*$ & n/a \\
+                        & 7 & 4 & 20 & 1050 & 15 & \textbf{5} (1) & \textbf{15} (0) & n/a$^*$ & n/a \\
 \midrule
-\texttt{AaC\_lab\_k\_5} & 1 & 5 & 18 & 522 & 5 & \textbf{1} (3) & \textbf{3} (1) & --$^*$ & -- \\
+\texttt{AaC\_lab\_k\_5} & 1 & 5 & 18 & 522 & 5 & \textbf{1} (3) & \textbf{3} (1) & n/a$^*$ & n/a \\
 \midrule
 \texttt{AaC\_lab\_k\_4\_2} & 1 & 4 & 10 & 30 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
                         & 2 & 4 & 10 & 30 & 1 & \textbf{1} (0) & \textbf{1} (0) & 1 & 0 \\
@@ -436,20 +436,22 @@ Dataset & Set & $k$ & $n$ & $\sum A$ & $D_{\mathrm{gr}}$ & Energy $D$ ($I$) & Po
 
 \vspace{4pt}
 
-\parbox{0.95\linewidth}{\footnotesize $^*$The exact CKK solver timed out ($>5.0\,\text{s}$) due to combinatorial explosion in branch-and-bound partition permutations. Gap is computed as $D_{\mathrm{Energy}} - D^*$.}
+\parbox{0.95\linewidth}{\footnotesize $^*$The exact CKK solver timed out ($>5.0\,\text{s}$) due to the combinatorial explosion of partition permutations in the branch-and-bound search, so $D^*$ and the gap are not available (n/a). For all other rows, Gap is computed as $D_{\mathrm{Energy}} - D^*$.}
 \end{table}
 
-The Energy-Based Local Search found the exact global optimum on 13 of the 16 solvable instances (81.3\%) and matched or improved upon the Polynomial Single-Swap result in all 19 instances.
+The Energy-Based Local Search found the exact global optimum on 13 of the 16 solvable instances (81.3\%). It is worth keeping in mind that all solvable instances are small ($n\le 11$), so this percentage characterizes the heuristic on small laboratory instances only. Relative to the greedy starting point, the Energy-Based search reduced $D$ on 7 of the 19 instances and the Single-Swap search on 4 of 19. Comparing the two heuristics directly, the Energy-Based result matched or improved upon the Polynomial Single-Swap result on all 19 instances: it was strictly better on 5 (\texttt{k\_3} set~1, \texttt{k\_4} sets~3, 6, 7, and \texttt{k\_5} set~1) and equal on the remaining 14, while the Single-Swap search was never better.
+
+The remaining gaps are instructive. Instance \texttt{AaC\_lab\_k\_4}, set~1 coincides with the example analyzed in Section~2.2.6: the greedy partition has $D=4$, one energy-decreasing exchange is applied, and the search stops at $D=4$ although a perfect partition ($D^*=0$) exists. Sets~4 and~5 of the same dataset ($+10$ and $+1$) show the same phenomenon, i.e., a local minimum of the energy that is not a minimum of $D$. For the three timed-out instances no ground truth is available, so only the relative comparison between the heuristics is meaningful there.
 
 \subsection{Time Performance Characteristics of the Exact Algorithm}
-To evaluate the scaling behavior and operational boundaries of the exact CKK algorithm, we tested problem sizes ranging from $n=4$ up to $n=18$ across group counts $k \in \{2, 3, 4\}$. Each configuration was evaluated over $T=5$ independent randomized trials with a per-instance cutoff of $5.0\,\text{s}$. Table~\ref{tab:ckk_runtime} reports the sample mean runtime, sample standard deviation, minimum and maximum observed runtimes, and the number of timeouts.
+To evaluate the scaling behavior and operational limits of the exact CKK algorithm, we tested problem sizes from $n=4$ up to $n=18$ for $k\in\{2,3\}$ and from $n=4$ up to $n=14$ for $k=4$ (for $k=4$ the solver already times out on every trial at $n=14$). Each configuration was evaluated over $T=5$ randomized trials with a per-instance cutoff of $5.0\,\text{s}$. Table~\ref{tab:ckk_runtime} reports the sample mean runtime, sample standard deviation, minimum and maximum observed runtimes, and the number of timeouts. Statistics are computed over the trials that finished within the cutoff.
 
 \begin{table}[H]
 \centering
 
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\caption{Time performance characteristics of the exact CKK algorithm ($T=5$ trials per size, 5.0\,s timeout cutoff).}
+\caption{Time performance characteristics of the exact CKK algorithm ($T=5$ trials per size, 5.0\,s timeout cutoff; statistics over completed trials only).}
 \label{tab:ckk_runtime}
 \begin{tabular}{ccrrrrr}
 \toprule
@@ -469,32 +471,36 @@ $k$ & $n$ & Mean Runtime & Std Dev & Min & Max & Timeouts ($>5.0\,\text{s}$) \\
 3 & 8  & 8.785\,ms   & 2.131\,ms  & 6.972\,ms  & 12.293\,ms   & 0/5 \\
 3 & 10 & 55.671\,ms  & 11.962\,ms & 44.893\,ms & 69.465\,ms   & 0/5 \\
 3 & 12 & 367.400\,ms & 59.673\,ms & 270.815\,ms & 420.030\,ms & 0/5 \\
-3 & 14 & 3573.860\,ms & 548.444\,ms & 3023.259\,ms & 4120.121\,ms & 2/5 \\
-3 & 16 & \multicolumn{4}{c}{Timeout limit reached on 80\% of instances} & 4/5 \\
-3 & 18 & \multicolumn{4}{c}{Timeout limit reached on 60\% of instances} & 3/5 \\
+3 & 14 & 3573.860\,ms$^\dagger$ & 548.444\,ms & 3023.259\,ms & 4120.121\,ms & 2/5 \\
+3 & 16 & \multicolumn{4}{c}{$>5.0$\,s in 4 of 5 trials (statistics n/a)} & 4/5 \\
+3 & 18 & \multicolumn{4}{c}{$>5.0$\,s in 3 of 5 trials (statistics n/a)} & 3/5 \\
 \midrule
 4 & 4  & 0.090\,ms   & 0.005\,ms  & 0.083\,ms  & 0.098\,ms    & 0/5 \\
 4 & 6  & 0.860\,ms   & 0.148\,ms  & 0.604\,ms  & 0.965\,ms    & 0/5 \\
 4 & 8  & 8.311\,ms   & 1.774\,ms  & 6.916\,ms  & 10.895\,ms   & 0/5 \\
 4 & 10 & 184.747\,ms & 71.180\,ms & 135.595\,ms & 309.107\,ms & 0/5 \\
 4 & 12 & 2880.861\,ms & 510.873\,ms & 2335.903\,ms & 3433.881\,ms & 0/5 \\
-4 & 14 & \multicolumn{4}{c}{Timed out on all trials ($>5.0\,\text{s}$)} & 5/5 \\
+4 & 14 & \multicolumn{4}{c}{$>5.0$\,s in all 5 trials} & 5/5 \\
 \bottomrule
 \end{tabular}
+
+\vspace{4pt}
+
+\parbox{0.95\linewidth}{\footnotesize $^\dagger$Mean over the 3 trials that finished; the 2 timed-out trials are excluded, so this value underestimates the true mean. Counting each timeout as 5.0\,s gives a lower bound of $(3\cdot 3.574+2\cdot 5.0)/5\approx 4.1\,\text{s}$.}
 \end{table}
 
-The empirical measurements clearly expose the combinatorial barrier of exact branch-and-bound partitioning:
+The measurements show the combinatorial barrier of exact branch-and-bound partitioning:
 \begin{itemize}
-\item For $k=2$, the algorithm remains tractable up to $n=18$ (averaging $555\,\text{ms}$), although variance is large due to instance-dependent tree pruning.
-\item For $k=3$, execution time climbs from $0.092\,\text{ms}$ at $n=4$ to $3.57\,\text{s}$ at $n=14$, beyond which the majority of trials exceed the 5-second cutoff.
-\item For $k=4$, the algorithm requires nearly 3 seconds at $n=12$ and encounters a complete timeout threshold at $n \ge 14$. This provides empirical justification for employing heuristic methods on realistic input sizes.
+\item For $k=2$, the algorithm remains tractable up to $n=18$ (mean $555\,\text{ms}$), although variance is large due to instance-dependent tree pruning. In several configurations the minimum runtime is orders of magnitude below the maximum (e.g., $0.373\,\text{ms}$ vs.\ $1078\,\text{ms}$ at $n=18$), which is consistent with the early termination of the search once a perfect partition ($D=0$) is found.
+\item For $k=3$, the mean runtime of completed trials climbs from $0.092\,\text{ms}$ at $n=4$ to $3.57\,\text{s}$ at $n=14$, where 2 of 5 trials already hit the cutoff. At $n=16$ and $n=18$ most trials time out (4/5 and 3/5). The slightly lower timeout rate at $n=18$ is a small-sample effect and is again consistent with instance-dependent early termination at $D=0$.
+\item For $k=4$, the algorithm requires nearly $3\,\text{s}$ at $n=12$ and times out on all trials at $n=14$. This provides empirical justification for employing heuristic methods on larger inputs.
 \end{itemize}
 
 \subsection{Time Performance Characteristics of Approximation Algorithms}
-To evaluate the approximation heuristics over wide problem scales, we tested the Polynomial Single-Swap search on inputs ranging from $n=10$ up to $n=200$ across $k \in \{2, 4, 8\}$, and evaluated the Energy-Based Local Search across density ratios up to $n=80$. Each point represents the sample mean and standard deviation over $T=10$ independent random instances.
+To evaluate the heuristics over a wider range of sizes, we tested the Polynomial Single-Swap search on inputs from $n=10$ up to $n=200$ for $k \in \{2, 4, 8\}$, and the Energy-Based Local Search across density ratios $n/k$ up to $10$ (with $n$ up to $80$). Each point represents the sample mean and standard deviation over $T=10$ random instances.
 
 \subsubsection{Polynomial Heuristic: Scaling up to $n = 200$}
-Table~\ref{tab:poly_runtime} documents the execution time, solution quality, and descent pass counts for the polynomial single-swap algorithm.
+Table~\ref{tab:poly_runtime} documents the execution time, solution quality, and number of passes for the polynomial single-swap algorithm. ``Avg Passes'' counts the passes that accepted at least one improving swap; values below $1$ occur because on some instances the greedy partition is already locally optimal (or perfect) and no pass improves it.
 
 \begin{table}[H]
 \centering
@@ -530,10 +536,12 @@ $k$ & $n$ & Mean Runtime & Std Dev & Min & Max & Avg Final $D$ & Avg Passes \\
 \end{tabular}
 \end{table}
 
-The empirical results confirm that the single-swap local search runs exceptionally fast in practice. Even at $n=200$ with $k=8$, average execution time remains well under a single millisecond ($0.728\,\text{ms}$). This efficiency stems from early convergence: while the worst-case bound permits up to $n^2$ passes, the local search converges in fewer than $3.5$ passes on average across all tested sizes.
+The single-swap local search is very fast in practice. Even at $n=200$ with $k=8$, the mean execution time is $0.728\,\text{ms}$, and the largest single run observed in the whole table is $1.032\,\text{ms}$ ($k=4$, $n=200$). This efficiency stems from early convergence: although the worst-case bound permits up to $n^2$ passes, the average number of improving passes never exceeds $3.4$ in any tested configuration.
+
+Solution quality, however, depends strongly on $k$. For $k=2$ and $k=4$ the average final difference decreases steadily with $n$ and falls below $1$ at $n=200$ ($0.3$ and $0.9$). For $k=8$ it does not: the average final $D$ stays between $9$ and $13$ for $n=50,\ldots,200$. A plausible explanation follows from the acceptance rule of Algorithm~3. A swap is accepted only if it strictly decreases $\max S-\min S$; a swap between two groups that are neither the current maximum nor the current minimum can never do so, because the extreme groups remain unchanged and $D'\ge D$. As $k$ grows, a larger fraction of the group pairs falls into this category, which restricts the effective neighborhood and makes the search stall earlier. (We have not verified this mechanism experimentally; it is consistent with, but not proven by, the data.)
 
 \subsubsection{Energy-Based Heuristic: Scaling with Density Ratio $n/k$}
-Because the Energy-Based Local Search explores all $2^{m_a + m_b}$ subset exchanges between pairs of groups, its execution cost is governed by the subset density ratio $n/k \approx m_i$. Table~\ref{tab:energy_runtime} displays performance as the density ratio increases from $2.0$ up to $10.0$ for $k=4$ and $k=8$.
+Because the Energy-Based Local Search explores all $2^{m_a + m_b}$ subset exchanges between pairs of groups, its execution cost is governed by the subset density ratio $n/k \approx m_i$. Table~\ref{tab:energy_runtime} displays performance as the density ratio increases from $2.0$ up to $8.0$ for $k=4$ and up to $10.0$ for $k=8$.
 
 \begin{table}[H]
 \centering
@@ -565,24 +573,24 @@ $k$ & $n$ & Density $n/k$ & Mean Runtime & Std Dev & Max & Avg Final $D$ & Avg P
 \end{tabular}
 \end{table}
 
-The empirical data verifies that:
+The data support the following observations:
 \begin{enumerate}[label=(\alph*)]
-\item For moderate ratios $n/k \le 6.0$, the energy search completes in under $15\,\text{ms}$, while finding high-quality partitions ($D \le 1.2$ on average).
-\item When $n/k \ge 8.0$, runtime increases exponentially following the $2^{2n/k}$ factor, reaching approximately $1.0\,\text{s}$ at $n=80, k=8$. However, this exponential effort consistently yields near-zero differences ($D = 0.7$).
+\item \textbf{Quality improves with density.} At low density ($n/k=2$) groups contain only about two elements, there is little room for rebalancing, and the final difference stays large ($\approx 250$). The average final $D$ drops quickly as $n/k$ grows (for $k=8$: $29.9$, $6.8$, $2.0$, $1.2$ at $n/k=3,4,5,6$), and from $n/k=6$ on it is about $1$ or below ($D=1.1$ for $k=4$ and $D=1.2$ for $k=8$ at $n/k=6$), while the mean runtime is still below $14\,\text{ms}$.
+\item \textbf{Runtime grows exponentially in $n/k$, but more slowly than the worst-case estimate.} For $k=8$, each increase of $n/k$ by $2$ multiplies the mean runtime by about $8.6$ (from $n/k=6$ to $8$) and $8.3$ (from $8$ to $10$); for $k=4$ the factor from $n/k=6$ to $8$ is about $7.7$. This corresponds to growth of roughly $2^{1.5\,n/k}$, below the $2^{2n/k}$ factor of the upper estimate in Section~2.2.4. This is expected, since that estimate is conservative and the observed number of passes even decreases at high density ($9.5\to 7.2$ for $k=8$). At $n=80$, $k=8$ the mean runtime is about $1.0\,\text{s}$ (maximum $2.7\,\text{s}$, standard deviation $0.65\,\text{s}$), and the average final difference is $0.7$.
 \end{enumerate}
+Note also that the average number of passes observed for $k=8$ (up to $9.7$) exceeds the value $I=5$ used for illustration in Table~1 of Section~2.2.4, so the illustrative candidate counts there should be read as optimistic for large $k$.
 
 \subsection{Key Empirical Insights}
-The combination of exact benchmarking, wide-range heuristic scaling, and lab datasets leads to three principal conclusions:
+The combination of exact benchmarking, wide-range heuristic scaling, and laboratory datasets leads to three conclusions:
 \begin{enumerate}
-
-\item \textbf{Tractability Threshold of Exact Solving:} Branch-and-bound partition merging via CKK provides guaranteed global optima for small instances ($n \le 12$ for $k \ge 3$, and up to $n \le 18$ for $k=2$), but quickly becomes intractable for larger tasks due to factorial permutation generation.
-\item \textbf{High-Speed Polynomial Guarantees:} The Polynomial Single-Swap Heuristic scales smoothly up to $n=200$ elements, consistently executing in sub-millisecond times ($< 0.8\,\text{ms}$) while reducing difference substantially from the greedy starting state.
-\item \textbf{Quality--Speed Trade-off in Local Search:} Where solution precision is paramount, the Energy-Based Local Search offers an effective balance: for problem sizes up to $n=80$ (with $k=8$), it achieves near-optimal partitions ($D \le 1$) within one second, dramatically outperforming the single-swap heuristic in final balance at the cost of exponential worst-case density dependence.
+\item \textbf{Tractability Threshold of Exact Solving:} Within the $5\,\text{s}$ cutoff, CKK provides guaranteed global optima for small instances ($n \le 12$ for $k \ge 3$, and up to $n \le 18$ for $k=2$), but quickly becomes intractable for larger inputs due to factorial permutation generation.
+\item \textbf{High Speed of the Polynomial Heuristic in Practice:} The Single-Swap heuristic scales smoothly up to $n=200$, with mean runtimes below $0.8\,\text{ms}$ in every tested configuration. Its solution quality is good for small $k$ (average $D<1$ at $n=200$ for $k=2$ and $k=4$) but stagnates for $k=8$ (average $D\approx 9$--$13$ for $n\ge 50$).
+\item \textbf{Quality--Speed Trade-off in Local Search:} The Energy-Based Local Search matched or improved the Single-Swap result on all 19 laboratory instances (strictly better on 5) and reached the exact optimum on 13 of 16 solvable ones. On larger random instances it reaches average $D\le 1.2$ for $n/k\ge 6$, and about $D=0.7$ at $n=80$, $k=8$ in roughly one second on average, at the cost of exponential dependence on the density $n/k$. Tables~\ref{tab:poly_runtime} and~\ref{tab:energy_runtime} use different instance sizes, so the order-of-magnitude difference in final $D$ for $k=8$ (about $10$ for Single-Swap versus below $1$ for Energy) is only indicative; a head-to-head comparison of both heuristics on identical large instances is left for future work.
 \end{enumerate}
 
-
 \section{Conclusion}
-Our team developed two heuristic approaches for balancing the sums of $k$ nonempty groups. Both use the same efficient greedy initialization. The first searches a broad neighborhood of subset exchanges using a squared-energy objective and can produce improved partitions at exponential computational cost. The second restricts the neighborhood to single-element swaps, directly reduces the maximum sum difference, and uses a polynomial pass limit to guarantee polynomial runtime under the logarithmic-cost criterion when measured against the binary input size.
+Our team developed two heuristic approaches for balancing the sums of $k$ nonempty groups and used the Complete Karmarkar--Karp algorithm as an exact reference on small instances. Both heuristics use the same efficient greedy initialization. The first searches a broad neighborhood of subset exchanges using a squared-energy objective and can produce improved partitions at exponential computational cost. The second restricts the neighborhood to single-element swaps, directly reduces the maximum sum difference, and uses a polynomial pass limit to guarantee polynomial runtime under the logarithmic-cost criterion when measured against the binary input size.
 
-Empirical testing across 19 benchmark instances confirmed this theoretical trade-off: the energy-based local search achieved the exact global optimum in 81.3\% (13 out of 16) of solvable instances and proved superior on complex instances, while the single-swap local search provides predictable polynomial execution guarantees at the expense of remaining trapped in suboptimal local minima.
+Empirical testing across 19 benchmark instances confirmed this theoretical trade-off: the energy-based local search achieved the exact global optimum in 81.3\% (13 out of 16) of solvable instances and matched or improved the single-swap result on every instance (strictly better on 5), while the single-swap local search provides predictable polynomial execution and sub-millisecond runtimes up to $n=200$ at the expense of becoming trapped in suboptimal local minima, especially for larger $k$.
+
 \end{document}
