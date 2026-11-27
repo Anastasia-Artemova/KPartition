@@ -11,6 +11,7 @@
 #include <sstream>
 #include <filesystem>
 #include <stdexcept>
+#include "../cli_helper.hpp"
 
 using namespace std;
 
@@ -332,30 +333,14 @@ void writeSolution(ostream& out, const vector<int>& originalSet, const vector<ve
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        cerr << "Please provide the following arguments: <input_file.txt> <k>\n";
-        return 1;
-    }
-
-    int k;
-
-    try {
-        string kArgument = argv[2];
-        size_t parsedCharacters = 0;
-
-        k = stoi(kArgument, &parsedCharacters);
-
-        if (parsedCharacters != kArgument.size() || k <= 0) {
-            throw invalid_argument("Invalid k");
-        }
-    } catch (const exception&) {
-        cerr << "Invalid k: must be a positive integer.\n";
-        return 1;
-    }
-
+    kpart_cli::ConsolePauseGuard pauseGuard;
     namespace fs = std::filesystem;
 
-    fs::path inputPath(argv[1]);
+    int k = 0;
+    fs::path inputPath;
+    if (!kpart_cli::resolveSolverArguments(argc, argv, "Approximate Solution (K-Partition)", inputPath, k)) {
+        return 1;
+    }
 
     if (inputPath.extension() != ".txt") {
         cerr << "Input file must have a .txt extension.\n";
@@ -419,7 +404,7 @@ int main(int argc, char* argv[]) {
         solutions.push_back(move(solution));
     }
 
-    fs::path outputDir = "./output";
+    fs::path outputDir = kpart_cli::resolveOutputDirectory(argc, inputPath, "output_approximate_solution");
     fs::create_directories(outputDir);
 
     fs::path outputPath = outputDir / (inputPath.stem().string() + "_output.txt");
@@ -444,6 +429,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    cout << "Results written to " << outputPath.lexically_normal().string() << "\n";
     return 0;
 }
 

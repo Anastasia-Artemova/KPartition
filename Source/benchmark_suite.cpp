@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <stdexcept>
+#include "cli_helper.hpp"
 
 using namespace std;
 
@@ -389,6 +390,7 @@ BenchStats computeStats(const vector<double>& times, const vector<long long>& di
 
 
 int main() {
+    kpart_cli::ConsolePauseGuard pauseGuard;
     cout << fixed << setprecision(3);
     mt19937 rng(42); 
 

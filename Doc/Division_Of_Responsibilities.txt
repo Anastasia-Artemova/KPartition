@@ -1,0 +1,15 @@
+Anastasiia Artemova
+ - Designed and implemented the approximate solution algorithm.
+ - Wrote a section in the final report dedicated to the approximate algorithm.
+
+Dmitry Hais
+ - Performed thorough testing and comparison of the algorithms.
+ - Worked on the approximate solution implementation.
+
+Maksym Suprun
+ - Was responsible for implementing the polynomial solution.
+ - Documented and explained the solution and obtained results in the report.
+
+Jha Pramika Singh
+ - Implemented the exact solution for the problem.
+ - Wrote the details of the implementation in the report.

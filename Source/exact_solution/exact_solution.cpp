@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <set>
 #include <map>
+#include "../cli_helper.hpp"
 
 using namespace std;
 
@@ -202,24 +203,15 @@ void writeSolution(ostream& out, const vector<int>& originalSet,
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 3) {
-        cerr << "Please provide the following arguments: <input_file.txt> <k>\n";
-        return 1;
-    }
-    int k;
-    try {
-        const string kArgument = argv[2];
-        size_t parsedCharacters = 0;
-        k = stoi(kArgument, &parsedCharacters);
-        if (parsedCharacters != kArgument.size() || k <= 0)
-            throw invalid_argument("Invalid k");
-    } catch (const exception&) {
-        cerr << "Invalid k: must be a positive integer.\n";
+    kpart_cli::ConsolePauseGuard pauseGuard;
+    namespace fs = std::filesystem;
+
+    int k = 0;
+    fs::path inputPath;
+    if (!kpart_cli::resolveSolverArguments(argc, argv, "Exact Solution (CKK K-Partition)", inputPath, k)) {
         return 1;
     }
 
-    namespace fs = std::filesystem;
-    const fs::path inputPath(argv[1]);
     if (inputPath.extension() != ".txt") {
         cerr << "Input file must have a .txt extension.\n";
         return 1;
@@ -267,7 +259,7 @@ int main(int argc, char* argv[]) {
         solutions.push_back(solution.solve());
     }
 
-    const fs::path outputDir = "./output";
+    const fs::path outputDir = kpart_cli::resolveOutputDirectory(argc, inputPath, "output_exact_solution");
     fs::create_directories(outputDir);
     const fs::path outputPath = outputDir / (inputPath.stem().string() + "_output.txt");
     ofstream outputFile(outputPath);
@@ -284,6 +276,6 @@ int main(int argc, char* argv[]) {
         cerr << "Error writing output file.\n";
         return 1;
     }
-    cout << "Results written to " << outputPath.string() << '\n';
+    cout << "Results written to " << outputPath.lexically_normal().string() << '\n';
     return 0;
 }
